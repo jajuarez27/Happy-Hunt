@@ -1,0 +1,145 @@
+openapi: 3.0.3
+info:
+  title: Happy Hunt API
+  version: 0.1.0
+  description: Aggregates local happy hour deals, food specials, and drink specials.
+servers:
+  - url: http://localhost:4000
+    description: Local dev
+tags:
+  - name: deals
+  - name: places
+paths:
+  /api/health:
+    get:
+      tags: [deals]
+      summary: Liveness probe
+      responses:
+        '200':
+          description: API is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+  /api/deals:
+    get:
+      tags: [deals]
+      summary: Search deals near a location
+      parameters:
+        - name: lat
+          in: query
+          schema: { type: number, format: float }
+          description: Origin latitude (required for distance sort/filter)
+        - name: lng
+          in: query
+          schema: { type: number, format: float }
+        - name: radius_mi
+          in: query
+          schema: { type: number, default: 5, maximum: 50 }
+          description: Search radius in miles
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [happy_hour, food_special, drink_special]
+        - name: live
+          in: query
+          schema: { type: boolean }
+          description: When true, only return deals live at request time
+      responses:
+        '200':
+          description: Matching deals, nearest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deals:
+                    type: array
+                    items: { $ref: '#/components/schemas/Deal' }
+  /api/deals/{id}:
+    get:
+      tags: [deals]
+      summary: Get a single deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deal with embedded place
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deal: { $ref: '#/components/schemas/Deal' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/places/{id}:
+    get:
+      tags: [places]
+      summary: Get a place and its active deals
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Place plus deals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  place: { $ref: '#/components/schemas/Place' }
+                  deals:
+                    type: array
+                    items: { $ref: '#/components/schemas/Deal' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  schemas:
+    Place:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        category: { type: string, enum: [bar, restaurant, pub, brewery, wine_bar, other] }
+        address: { type: string, nullable: true }
+        neighborhood: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        state: { type: string, nullable: true }
+        lat: { type: number, format: double }
+        lng: { type: number, format: double }
+        phone: { type: string, nullable: true }
+        website: { type: string, nullable: true }
+    Deal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        place_id: { type: string, format: uuid }
+        place: { $ref: '#/components/schemas/Place' }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        category: { type: string, enum: [happy_hour, food_special, drink_special] }
+        days_of_week:
+          type: array
+          items: { type: integer, minimum: 0, maximum: 6 }
+          description: JS convention — 0 = Sunday, 6 = Saturday
+        start_time: { type: string, example: '16:00' }
+        end_time: { type: string, example: '19:00' }
+        price_hint: { type: string, nullable: true }
+        is_verified: { type: boolean }
+        distance_mi: { type: number, nullable: true }
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }

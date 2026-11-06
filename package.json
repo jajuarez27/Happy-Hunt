@@ -1,0 +1,12 @@
+{
+  "name": "happy-hunt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mobile-first aggregator for local happy hour deals, food specials, and drink specials.",
+  "scripts": {
+    "dev:api": "npm --prefix api run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "install:all": "npm --prefix api install && npm --prefix client install"
+  }
+}
